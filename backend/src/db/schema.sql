@@ -9,9 +9,15 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE,
   phone TEXT NOT NULL,
   password_hash TEXT,
-  role TEXT NOT NULL DEFAULT 'user', -- 'user' | 'admin'
+  role TEXT NOT NULL DEFAULT 'buyer', -- 'buyer' | 'seller' | 'admin'
+  seller_id_number TEXT,
+  kra_pin TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Ensure role is constrained
+ALTER TABLE users
+  ADD CONSTRAINT IF NOT EXISTS users_role_check
+  CHECK (role IN ('buyer','seller','admin'));
 
 CREATE TABLE IF NOT EXISTS listings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,6 +27,8 @@ CREATE TABLE IF NOT EXISTS listings (
   description TEXT,
   price_kes INTEGER NOT NULL,
   location TEXT NOT NULL,
+  county TEXT,
+  town TEXT,
   images TEXT[] DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'pending_payment', -- 'draft' | 'pending_payment' | 'active' | 'sold' | 'hidden' | 'expired'
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

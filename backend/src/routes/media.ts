@@ -30,7 +30,8 @@ router.get('/:filename', async (req, res) => {
             }
         }
 
-        const filePath = path.join(process.cwd(), 'backend', 'uploads', filename);
+        // Files are stored under /app/uploads when running in container
+        const filePath = path.join(process.cwd(), 'uploads', filename);
         if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File missing' });
         return res.sendFile(filePath);
     } catch (e) {

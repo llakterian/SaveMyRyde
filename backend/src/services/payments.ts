@@ -17,6 +17,13 @@ export async function claimManualListingPayment(req: Request, res: Response) {
 
         const pool = getPool();
 
+        // Ensure listing is pending_payment before accepting claim
+        const ls = await pool.query(`SELECT status FROM listings WHERE id=$1 LIMIT 1`, [listingId]);
+        if (ls.rowCount === 0) return res.status(404).json({ error: 'Listing not found' });
+        if (ls.rows[0].status !== 'pending_payment') {
+            return res.status(400).json({ error: 'Listing is not awaiting payment' });
+        }
+
         // Create a pending payment claim
         const amount_kes = 2500;
         const insert = await pool.query(
@@ -46,7 +53,14 @@ export async function adminVerifyPayment(req: Request, res: Response) {
         if (pay.rowCount === 0) return res.status(404).json({ error: 'Payment not found' });
         const listingId = pay.rows[0].listing_id as string;
 
+        // Verify listing is in pending_payment before publishing
+        const ls = await pool.query(`SELECT status FROM listings WHERE id=$1`, [listingId]);
+        if (ls.rowCount === 0) return res.status(404).json({ error: 'Listing not found' });
+
         if (approve) {
+            if (ls.rows[0].status !== 'pending_payment') {
+                return res.status(400).json({ error: 'Only pending listings can be activated' });
+            }
             await pool.query(`UPDATE payments SET status='successful' WHERE id=$1`, [paymentId]);
             await pool.query(`UPDATE listings SET status='active', updated_at=NOW() WHERE id=$1`, [listingId]);
             return res.json({ message: 'Payment approved and listing published' });

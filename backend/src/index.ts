@@ -58,11 +58,16 @@ app.post('/api/payments/manual/claim', claimManualListingPayment);
 app.post('/api/payments/manual/verify', adminVerifyPayment);
 app.use('/api/ads', (await import('./routes/ads')).default);
 app.use('/api/admin', (await import('./routes/admin')).default);
+app.use('/api/payments', (await import('./routes/payments')).default);
 
 app.get('/api', (req, res) => {
   res.json({
     message: 'CarRescueKe API is running',
-    version: '1.0.0'
+    version: '1.0.0',
+    paybill: {
+      name: process.env.PAYBILL_NAME || 'Loop Bank',
+      number: process.env.PAYBILL_NUMBER || '714777'
+    }
   });
 });
 

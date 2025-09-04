@@ -19,8 +19,8 @@ router.post('/', upload.array('images', 6), async (req, res) => {
         const pool = getPool();
 
         const result = await pool.query(
-            `INSERT INTO listings (user_id, contact_phone, title, description, price_kes, location, images, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending') RETURNING id`,
+            `INSERT INTO listings (user_id, contact_phone, title, description, price_kes, location, images, status, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending_payment', NOW() + INTERVAL '30 days') RETURNING id`,
             [userId, userId, title, description || null, parseInt(price_kes, 10), location, images]
         );
 
@@ -28,7 +28,7 @@ router.post('/', upload.array('images', 6), async (req, res) => {
 
         return res.status(201).json({
             listingId,
-            message: 'Listing created. Complete payment to publish.'
+            message: 'Listing created. Pay KES 2,500 to publish.'
         });
     } catch (err: any) {
         console.error(err);
@@ -39,7 +39,7 @@ router.post('/', upload.array('images', 6), async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const pool = getPool();
-        const result = await pool.query(`SELECT id, title, price_kes, location, images, status, created_at FROM listings WHERE status = 'public' ORDER BY created_at DESC LIMIT 100`);
+        const result = await pool.query(`SELECT id, title, price_kes, location, images, status, created_at FROM listings WHERE status = 'active' ORDER BY created_at DESC LIMIT 100`);
         return res.json(result.rows);
     } catch (err) {
         console.error(err);

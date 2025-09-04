@@ -22,9 +22,10 @@ CREATE TABLE IF NOT EXISTS listings (
   price_kes INTEGER NOT NULL,
   location TEXT NOT NULL,
   images TEXT[] DEFAULT '{}',
-  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' (awaiting payment) | 'public' | 'sold' | 'hidden'
+  status TEXT NOT NULL DEFAULT 'pending_payment', -- 'draft' | 'pending_payment' | 'active' | 'sold' | 'hidden' | 'expired'
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS payments (

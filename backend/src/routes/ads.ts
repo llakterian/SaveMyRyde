@@ -26,7 +26,7 @@ router.post('/boost', async (req, res) => {
         // Ensure listing is public before boosting
         const listingQ = await pool.query(`SELECT status FROM listings WHERE id = $1`, [listingId]);
         if (listingQ.rowCount === 0) return res.status(404).json({ error: 'Listing not found' });
-        if (listingQ.rows[0].status !== 'public') return res.status(400).json({ error: 'Listing must be public before advertising' });
+        if (listingQ.rows[0].status !== 'active') return res.status(400).json({ error: 'Listing must be active before advertising' });
 
         const amount_kes = AD_PRICING[type];
 

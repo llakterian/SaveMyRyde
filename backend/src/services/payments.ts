@@ -48,7 +48,7 @@ export async function adminVerifyPayment(req: Request, res: Response) {
 
         if (approve) {
             await pool.query(`UPDATE payments SET status='successful' WHERE id=$1`, [paymentId]);
-            await pool.query(`UPDATE listings SET status='public', updated_at=NOW() WHERE id=$1`, [listingId]);
+            await pool.query(`UPDATE listings SET status='active', updated_at=NOW() WHERE id=$1`, [listingId]);
             return res.json({ message: 'Payment approved and listing published' });
         } else {
             await pool.query(`UPDATE payments SET status='failed' WHERE id=$1`, [paymentId]);

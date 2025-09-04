@@ -38,8 +38,8 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static for uploads
-app.use('/uploads', express.static(path.join(process.cwd(), 'backend', 'uploads')));
+// Guarded media route (locks images for non-active listings)
+app.use('/uploads', (await import('./routes/media')).default);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -59,6 +59,7 @@ app.post('/api/payments/manual/verify', adminVerifyPayment);
 app.use('/api/ads', (await import('./routes/ads')).default);
 app.use('/api/admin', (await import('./routes/admin')).default);
 app.use('/api/payments', (await import('./routes/payments')).default);
+app.use('/api/airtel', (await import('./routes/airtel')).default);
 
 app.get('/api', (req, res) => {
   res.json({
@@ -66,7 +67,8 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     paybill: {
       name: process.env.PAYBILL_NAME || 'Loop Bank',
-      number: process.env.PAYBILL_NUMBER || '714777'
+      number: process.env.PAYBILL_NUMBER || '714777',
+      account: process.env.PAYBILL_ACCOUNT || '0101355308'
     }
   });
 });
@@ -99,9 +101,17 @@ async function startServer() {
     console.log('✅ Redis connected successfully');
 
     // Start server
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 CarRescueKe Backend API ready`);
+      // Seed initial admin
+      try {
+        const { seedInitialAdmin } = await import('./admin/seed');
+        await seedInitialAdmin();
+        console.log('👤 Initial admin ensured.');
+      } catch (e) {
+        console.error('Admin seed failed:', e);
+      }
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

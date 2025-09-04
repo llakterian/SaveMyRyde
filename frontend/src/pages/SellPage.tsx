@@ -38,7 +38,7 @@ export function SellPage() {
             })
             const listingId = createResp.data.listingId as string
             setCreatedListingId(listingId)
-            setMessage('Listing created. Pay KES 2,500 to Loop Bank Paybill, then enter your M-Pesa code below for verification.')
+            setMessage('Listing created. Pay KES 2,500 to Loop Bank Paybill 714777 (Account 0101355308), then enter your M-Pesa code below for verification.')
         } catch (err: any) {
             console.error(err)
             setMessage('Failed to create listing. Please try again.')

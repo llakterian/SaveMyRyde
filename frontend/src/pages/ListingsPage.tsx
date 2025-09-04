@@ -38,9 +38,9 @@ export function ListingsPage() {
                 {items.map((l) => (
                     <div key={l.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         {l.images?.[0] ? (
-                            <img src={l.images[0]} className="w-full h-48 object-cover" />
+                            <img src={l.images[0]} alt="car" className="w-full h-48 object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
                         ) : (
-                            <div className="w-full h-48 bg-gray-200" />
+                            <div className="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500">Image pending payment</div>
                         )}
                         <div className="p-4">
                             <h3 className="text-lg font-semibold">{l.title}</h3>

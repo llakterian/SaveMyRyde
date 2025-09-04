@@ -19,4 +19,16 @@ router.post('/init-db', async (req, res) => {
     }
 });
 
+// Admin: trigger expiry job
+router.post('/expire-now', async (req, res) => {
+    try {
+        const { expireListingsJob } = await import('../jobs/expire');
+        await expireListingsJob();
+        return res.json({ message: 'Expiry job run completed' });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Failed to run expiry job' });
+    }
+});
+
 export default router;

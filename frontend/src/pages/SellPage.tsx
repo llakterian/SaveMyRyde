@@ -17,6 +17,8 @@ export function SellPage() {
     const [message, setMessage] = useState<string | null>(null)
     const [createdListingId, setCreatedListingId] = useState<string | null>(null)
     const [mpesaCode, setMpesaCode] = useState('')
+    const [airtelRef, setAirtelRef] = useState('')
+    const [payMethod, setPayMethod] = useState<'mpesa' | 'airtel'>('mpesa')
 
     const onSubmit = async (data: FormValues) => {
         setMessage(null)
@@ -48,23 +50,37 @@ export function SellPage() {
     }
 
     const submitManualCode = async (userPhone: string) => {
-        if (!createdListingId || !mpesaCode) {
+        if (!createdListingId) return
+        if (payMethod === 'mpesa' && !mpesaCode) {
             setMessage('Provide the M-Pesa code to continue.')
+            return
+        }
+        if (payMethod === 'airtel' && !airtelRef) {
+            setMessage('Provide the Airtel reference to continue.')
             return
         }
         setLoading(true)
         try {
             const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-            await axios.post(`${baseUrl}/api/payments/manual/claim`, {
-                userId: userPhone,
-                listingId: createdListingId,
-                mpesaCode,
-            })
+            if (payMethod === 'mpesa') {
+                await axios.post(`${baseUrl}/api/payments/manual/claim`, {
+                    userId: userPhone,
+                    listingId: createdListingId,
+                    mpesaCode,
+                })
+            } else {
+                await axios.post(`${baseUrl}/api/airtel/manual/claim`, {
+                    userId: userPhone,
+                    listingId: createdListingId,
+                    airtelRef,
+                })
+            }
             setMessage('Payment claim submitted. Admin will verify and publish your listing shortly.')
             setMpesaCode('')
+            setAirtelRef('')
         } catch (e) {
             console.error(e)
-            setMessage('Failed to submit payment code. Try again.')
+            setMessage('Failed to submit payment claim. Try again.')
         } finally {
             setLoading(false)
         }
@@ -110,18 +126,31 @@ export function SellPage() {
 
             {createdListingId && (
                 <div className="mt-10 p-4 bg-yellow-50 border border-yellow-200 rounded">
-                    <h3 className="font-semibold text-yellow-900">Next step: Pay and submit your M-Pesa code</h3>
+                    <h3 className="font-semibold text-yellow-900">Next step: Pay and submit your code</h3>
                     <ol className="list-decimal ml-5 text-sm text-yellow-900 mt-2 space-y-1">
-                        <li>Pay <strong>KES 2,500</strong> to the Loop Bank Paybill using your phone.</li>
-                        <li>After payment, enter the received M-Pesa confirmation code below.</li>
+                        <li>Pay <strong>KES 2,500</strong> to Loop Bank Paybill 714777 (Account 0101355308) or via Airtel Money.</li>
+                        <li>After payment, choose method and enter the confirmation code/reference.</li>
                         <li>We’ll verify and publish your listing.</li>
                     </ol>
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <input className="input-field sm:col-span-2" placeholder="M-Pesa code (e.g., QFT12ABC34)" value={mpesaCode} onChange={e => setMpesaCode(e.target.value)} />
-                        <button className="btn-primary" disabled={loading || !mpesaCode} onClick={() => submitManualCode((document.querySelector('input[name="userId"]') as HTMLInputElement)?.value)}>
-                            {loading ? 'Submitting…' : 'Submit Code'}
-                        </button>
+                    <div className="mt-4 flex gap-3">
+                        <button type="button" className={`px-3 py-2 rounded border ${payMethod === 'mpesa' ? 'bg-green-600 text-white' : 'bg-white'}`} onClick={() => setPayMethod('mpesa')}>M-Pesa</button>
+                        <button type="button" className={`px-3 py-2 rounded border ${payMethod === 'airtel' ? 'bg-red-600 text-white' : 'bg-white'}`} onClick={() => setPayMethod('airtel')}>Airtel Money</button>
                     </div>
+                    {payMethod === 'mpesa' ? (
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <input className="input-field sm:col-span-2" placeholder="M-Pesa code (e.g., QFT12ABC34)" value={mpesaCode} onChange={e => setMpesaCode(e.target.value)} />
+                            <button className="btn-primary" disabled={loading || !mpesaCode} onClick={() => submitManualCode((document.querySelector('input[name="userId"]') as HTMLInputElement)?.value)}>
+                                {loading ? 'Submitting…' : 'Submit Code'}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <input className="input-field sm:col-span-2" placeholder="Airtel Money reference" value={airtelRef} onChange={e => setAirtelRef(e.target.value)} />
+                            <button className="btn-primary" disabled={loading || !airtelRef} onClick={() => submitManualCode((document.querySelector('input[name="userId"]') as HTMLInputElement)?.value)}>
+                                {loading ? 'Submitting…' : 'Submit Reference'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 

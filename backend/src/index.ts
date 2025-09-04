@@ -112,6 +112,16 @@ async function startServer() {
       } catch (e) {
         console.error('Admin seed failed:', e);
       }
+      // Schedule daily expiry (every 24h)
+      try {
+        const { expireListingsJob } = await import('./jobs/expire');
+        setInterval(() => {
+          expireListingsJob().catch(err => console.error('expireListingsJob error', err));
+        }, 24 * 60 * 60 * 1000);
+        console.log('⏰ Expiry scheduler set (24h).');
+      } catch (e) {
+        console.error('Failed to start expiry scheduler', e);
+      }
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

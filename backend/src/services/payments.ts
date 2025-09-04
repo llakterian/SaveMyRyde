@@ -1,45 +1,61 @@
 import { getPool } from '../config/database';
 import { Request, Response } from 'express';
 
-// NOTE: Placeholder M-Pesa integration. Swap with Safaricom Daraja in production.
-// For now, we simulate payment: if amount == 2500 we mark as successful.
+// Manual payment flow: user pays to Loop Bank Paybill, submits M-Pesa code; admin verifies later.
 
-export async function initiateListingPayment(req: Request, res: Response) {
+export async function claimManualListingPayment(req: Request, res: Response) {
     try {
-        const { userId, listingId } = req.body;
-        const amount_kes = 2500; // fixed listing fee
+        const { userId, listingId, mpesaCode } = req.body as {
+            userId: string;
+            listingId: string;
+            mpesaCode: string; // e.g., QFT12ABC34
+        };
 
-        if (!userId || !listingId) {
-            return res.status(400).json({ error: 'userId and listingId are required' });
+        if (!userId || !listingId || !mpesaCode) {
+            return res.status(400).json({ error: 'userId, listingId, mpesaCode are required' });
         }
 
         const pool = getPool();
 
-        // record payment as initiated
-        const paymentInsert = await pool.query(
-            `INSERT INTO payments (user_id, listing_id, amount_kes, status, provider, metadata)
-       VALUES ($1, $2, $3, 'initiated', 'mpesa', $4)
+        // Create a pending payment claim
+        const amount_kes = 2500;
+        const insert = await pool.query(
+            `INSERT INTO payments (user_id, listing_id, amount_kes, status, provider, provider_ref, metadata)
+       VALUES ($1, $2, $3, 'initiated', 'mpesa-manual', $4, $5)
        RETURNING id`,
-            [userId, listingId, amount_kes, JSON.stringify({ simulated: true })]
+            [userId, listingId, amount_kes, mpesaCode, JSON.stringify({ manual: true })]
         );
 
-        // Simulate success immediately (replace with STK Push and callback later)
-        const paymentId = paymentInsert.rows[0].id as string;
-        await pool.query(`UPDATE payments SET status = 'successful', provider_ref = $1 WHERE id = $2`, [
-            'SIM-' + Date.now(),
-            paymentId,
-        ]);
-
-        // Set listing to public
-        await pool.query(`UPDATE listings SET status = 'public', updated_at = NOW() WHERE id = $1`, [listingId]);
-
         return res.status(200).json({
-            message: 'Payment successful. Listing is now public.',
-            paymentId,
-            amount_kes,
+            message: 'Payment claim submitted. Admin will verify and publish your listing shortly.',
+            paymentId: insert.rows[0].id,
         });
-    } catch (err: any) {
+    } catch (err) {
         console.error(err);
-        return res.status(500).json({ error: 'Failed to process payment' });
+        return res.status(500).json({ error: 'Failed to submit manual payment claim' });
+    }
+}
+
+export async function adminVerifyPayment(req: Request, res: Response) {
+    try {
+        const { paymentId, approve } = req.body as { paymentId: string; approve: boolean };
+        if (!paymentId) return res.status(400).json({ error: 'paymentId is required' });
+
+        const pool = getPool();
+        const pay = await pool.query(`SELECT listing_id FROM payments WHERE id = $1`, [paymentId]);
+        if (pay.rowCount === 0) return res.status(404).json({ error: 'Payment not found' });
+        const listingId = pay.rows[0].listing_id as string;
+
+        if (approve) {
+            await pool.query(`UPDATE payments SET status='successful' WHERE id=$1`, [paymentId]);
+            await pool.query(`UPDATE listings SET status='public', updated_at=NOW() WHERE id=$1`, [listingId]);
+            return res.json({ message: 'Payment approved and listing published' });
+        } else {
+            await pool.query(`UPDATE payments SET status='failed' WHERE id=$1`, [paymentId]);
+            return res.json({ message: 'Payment rejected' });
+        }
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Failed to verify payment' });
     }
 }

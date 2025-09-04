@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
 import listingsRouter from './routes/listings';
-import { initiateListingPayment } from './services/payments';
+import { claimManualListingPayment, adminVerifyPayment } from './services/payments';
 import path from 'path';
 
 // Load environment variables
@@ -52,7 +52,10 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/listings', listingsRouter);
-app.post('/api/payments/initiate', initiateListingPayment);
+// Manual payment claim endpoint
+app.post('/api/payments/manual/claim', claimManualListingPayment);
+// Admin verify endpoint
+app.post('/api/payments/manual/verify', adminVerifyPayment);
 app.use('/api/ads', (await import('./routes/ads')).default);
 app.use('/api/admin', (await import('./routes/admin')).default);
 

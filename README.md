@@ -1,4 +1,4 @@
-# SaveMyRyde 🚗
+# SaveMyRyde 
 
 <p align="center">
   <img src="frontend/public/img/SaveMyRydebyDecabits.png" alt="SaveMyRyde Logo" width="600" />

@@ -63,9 +63,16 @@ export function Layout({ children }: LayoutProps) {
                 <span className="text-white font-bold text-xl">🚗</span>
               </div>
               <div className="flex flex-col">
-                <h1 className="text-2xl font-bold heading-gradient">
-                  SaveMyRyde
-                </h1>
+                <div className="flex items-center">
+                  <img
+                    src="/img/logo.svg"
+                    alt="SaveMyRyde Logo"
+                    className="w-10 h-10 mr-2"
+                  />
+                  <h1 className="text-2xl font-bold heading-gradient">
+                    SaveMyRyde
+                  </h1>
+                </div>
                 <span className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
                   Kenya's #1 Car Marketplace
                 </span>
@@ -320,15 +327,18 @@ export function Layout({ children }: LayoutProps) {
             <div className="md:col-span-2">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">🚗</span>
+                  <img
+                    src="/favicon.svg"
+                    alt="SaveMyRyde Icon"
+                    className="w-6 h-6"
+                  />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold heading-gradient text-white">
-                    SaveMyRyde
-                  </h3>
-                  <span className="text-sm text-slate-400">
-                    Kenya's Premier Vehicle Marketplace
-                  </span>
+                  <img
+                    src="/img/logo-full.svg"
+                    alt="SaveMyRyde"
+                    className="h-12 mb-2"
+                  />
                 </div>
               </div>
               <p className="text-slate-300 mb-6 max-w-md">

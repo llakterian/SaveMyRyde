@@ -4,6 +4,7 @@ import { getPool } from '../config/database';
 import { signJwt } from '../middleware/auth';
 import { getRedisClient } from '../config/redis';
 import { isValidKenyanPhone, normalizeKenyanPhone } from '../utils/phone';
+import { generateAndStoreOtp, sendOtpBySms, sendOtpByEmail, sendOtpByWhatsApp } from '../services/otp';
 
 const router = Router();
 
@@ -44,10 +45,10 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/auth/otp/request
-// body: { phone: string }
+// body: { phone: string, method?: 'sms'|'email'|'whatsapp', email?: string }
 router.post('/otp/request', async (req, res) => {
     try {
-        const { phone } = req.body as { phone?: string };
+        const { phone, method, email } = req.body as { phone?: string; method?: 'sms' | 'email' | 'whatsapp'; email?: string };
         if (!phone) return res.status(400).json({ error: 'phone is required' });
 
         // Validate and normalize to +2547XXXXXXXX / +2541XXXXXXXX
@@ -56,15 +57,28 @@ router.post('/otp/request', async (req, res) => {
         }
         const normalized = normalizeKenyanPhone(phone);
 
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const redis = getRedisClient();
-        const key = `otp:${normalized}`;
-        await redis.set(key, code, { EX: 300 }); // 5 minutes
+        // Generate & store OTP
+        const code = await generateAndStoreOtp(normalized);
 
-        // TODO: integrate SMS provider
-        console.log(`[OTP] Code for ${normalized}: ${code}`);
+        const channel = method || 'sms';
+        switch (channel) {
+            case 'email': {
+                if (!email) return res.status(400).json({ error: 'email is required for email delivery' });
+                await sendOtpByEmail(email, code);
+                break;
+            }
+            case 'whatsapp': {
+                await sendOtpByWhatsApp(normalized, code);
+                break;
+            }
+            case 'sms':
+            default: {
+                await sendOtpBySms(normalized, code);
+                break;
+            }
+        }
 
-        return res.json({ message: 'OTP sent' });
+        return res.json({ message: 'OTP sent', via: channel });
     } catch (e) {
         console.error(e);
         return res.status(500).json({ error: 'Failed to request OTP' });
@@ -102,6 +116,9 @@ router.post('/otp/verify', async (req, res) => {
             user = ins.rows[0];
         }
 
+        if (!user) {
+            return res.status(500).json({ error: 'Failed to create or fetch user' });
+        }
         const token = signJwt({ userId: user.id, role: user.role, email: user.email, phone: user.phone });
         return res.json({ token, user });
     } catch (e) {
@@ -109,5 +126,26 @@ router.post('/otp/verify', async (req, res) => {
         return res.status(500).json({ error: 'Failed to verify OTP' });
     }
 });
+
+// DEV-ONLY: Read current OTP for a phone from Redis (to use when SMS isn’t set up yet)
+const enableDevOtp = (process.env.ENABLE_DEV_OTP === 'true') || (process.env.NODE_ENV !== 'production');
+if (enableDevOtp) {
+    router.get('/otp/dev-read', async (req, res) => {
+        try {
+            const phone = (req.query.phone as string) || '';
+            if (!phone) return res.status(400).json({ error: 'phone is required' });
+            if (!isValidKenyanPhone(phone)) return res.status(400).json({ error: 'Invalid Kenyan phone format' });
+            const normalized = normalizeKenyanPhone(phone);
+            const redis = getRedisClient();
+            const key = `otp:${normalized}`;
+            const saved = await redis.get(key);
+            if (!saved) return res.status(404).json({ error: 'No OTP available. Request a new one.' });
+            return res.json({ phone: normalized, code: saved });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ error: 'Failed to read OTP' });
+        }
+    });
+}
 
 export default router;

@@ -1,0 +1,99 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: carrescue_ke
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O- http://localhost:8025/ >/dev/null 2>&1 || curl -sf http://localhost:8025/ >/dev/null 2>&1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  backend:
+    build: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      ENABLE_DEV_OTP: "true"
+      FRONTEND_URL: http://localhost:3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: carrescue_ke
+      DB_USER: postgres
+      DB_PASSWORD: password
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt
+      JWT_EXPIRES_IN: 7d
+      PAYBILL_NAME: "Loop Bank"
+      PAYBILL_NUMBER: "714777"
+      PAYBILL_ACCOUNT: "0101355308"
+      # For local dev with Mailhog
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      FROM_EMAIL: "dev@carrescue.ke"
+      # For production SMTP (e.g., Brevo). Set these in your deployment env.
+      # SMTP_HOST: smtp-relay.brevo.com
+      # SMTP_PORT: 587
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mailhog:
+        condition: service_started
+    ports:
+      - "3001:3001"
+    volumes:
+      - uploads:/app/uploads
+
+  schema:
+    image: node:20-alpine
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: carrescue_ke
+      DB_USER: postgres
+      DB_PASSWORD: password
+    command: sh -c "npm ci && npx ts-node src/db/apply.ts"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+  uploads:

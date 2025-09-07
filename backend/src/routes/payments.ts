@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { getPool } from '../config/database';
 import { adminVerifyPayment } from '../services/payments';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 const router = Router();
+
+// Protect all admin payment ops in this router
+router.use(requireAuth, requireRole('admin'));
 
 // List pending manual payments
 router.get('/pending', async (_req, res) => {
@@ -39,7 +43,7 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// Approve/Reject (delegates to service)
-router.post('/manual/verify', adminVerifyPayment);
+// Approve/Reject (delegates to service) — protect
+router.post('/manual/verify', requireAuth, requireRole('admin'), adminVerifyPayment);
 
 export default router;

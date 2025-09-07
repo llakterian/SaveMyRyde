@@ -26,20 +26,20 @@ export function AdvertisePage() {
 
     return (
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <h2 className="text-3xl font-bold mb-4">Advertise Your Listing</h2>
-            <p className="text-gray-600 mb-6">Boost visibility with featured/homepage placements.</p>
+            <h2 className="text-3xl font-bold mb-4 heading-gradient">Advertise Your Listing</h2>
+            <p className="text-slate-600 dark:text-slate-300 mb-6">Boost visibility with featured/homepage placements.</p>
 
             <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Listing ID</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Listing ID</label>
                     <input className="input-field mt-1" value={listingId} onChange={e => setListingId(e.target.value)} placeholder="UUID" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone (User ID)</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Phone (User ID)</label>
                     <input className="input-field mt-1" value={userId} onChange={e => setUserId(e.target.value)} placeholder="07XXXXXXXX" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Ad Type</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Ad Type</label>
                     <select className="input-field mt-1" value={type} onChange={e => setType(e.target.value as any)}>
                         <option value="featured">Featured (KES 500)</option>
                         <option value="homepage">Homepage (KES 1500)</option>
@@ -47,11 +47,11 @@ export function AdvertisePage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Days</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Days</label>
                     <input type="number" className="input-field mt-1" value={days} onChange={e => setDays(parseInt(e.target.value || '1', 10))} />
                 </div>
                 <button onClick={submit} disabled={loading} className="btn-primary">{loading ? 'Processing…' : 'Buy Ad'}</button>
-                {message && <p className="mt-3 text-green-700 bg-green-50 p-3 rounded">{message}</p>}
+                {message && <p className="mt-3 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded">{message}</p>}
             </div>
         </div>
     )

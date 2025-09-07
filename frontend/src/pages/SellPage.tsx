@@ -1,12 +1,15 @@
 import { useForm } from 'react-hook-form'
 import axios from 'axios'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface FormValues {
     userId: string
     title: string
     description?: string
     price_kes: number
+    min_price_kes?: number
+    auction_deadline?: string
+    is_flash_deal?: boolean
     location?: string
     county?: string
     town?: string
@@ -33,7 +36,7 @@ export function SellPage() {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
     useEffect(() => {
-        const token = localStorage.getItem('crk_user_jwt')
+        const token = localStorage.getItem('smr_user_jwt')
         if (!token) return
         axios.get(`${baseUrl}/api/me/profile`, { headers: { Authorization: `Bearer ${token}` } })
             .then(r => {
@@ -58,6 +61,9 @@ export function SellPage() {
             form.append('title', data.title)
             if (data.description) form.append('description', data.description)
             form.append('price_kes', String(data.price_kes))
+            if (data.min_price_kes) form.append('min_price_kes', String(data.min_price_kes))
+            if (data.auction_deadline) form.append('auction_deadline', data.auction_deadline)
+            if (typeof data.is_flash_deal !== 'undefined') form.append('is_flash_deal', String(!!data.is_flash_deal))
             if (data.location) form.append('location', data.location)
             if (data.county) form.append('county', data.county)
             if (data.town) form.append('town', data.town)
@@ -131,7 +137,7 @@ export function SellPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Phone (User ID)</label>
-                    <input name="userId" className="input-field mt-1" placeholder="07XXXXXXXX" defaultValue={userPhone} disabled={!!userPhone} {...register('userId', { required: true })} />
+                    <input className="input-field mt-1" placeholder="07XXXXXXXX" defaultValue={userPhone} disabled={!!userPhone} {...register('userId', { required: true })} />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Title</label>
@@ -147,10 +153,27 @@ export function SellPage() {
                         <input type="number" className="input-field mt-1" {...register('price_kes', { required: true, valueAsNumber: true })} />
                     </div>
                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Minimum Acceptable Price (KES)</label>
+                        <input type="number" className="input-field mt-1" {...register('min_price_kes', { valueAsNumber: true })} />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Auction Deadline</label>
+                        <input type="datetime-local" className="input-field mt-1" {...register('auction_deadline')} />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Flash Deal</label>
+                        <input type="checkbox" className="ml-2" {...register('is_flash_deal')} />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
                         <label className="block text-sm font-medium text-gray-700">Location</label>
                         <input className="input-field mt-1" placeholder="Nairobi" {...register('location')} />
                         <div className="text-xs text-gray-500 mt-1">Optional if you provide county + town.</div>
                     </div>
+                    <div />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
@@ -191,8 +214,8 @@ export function SellPage() {
                         <li>We’ll verify and publish your listing.</li>
                     </ol>
                     <div className="mt-4 flex gap-3">
-                        <button type="button" className={`px-3 py-2 rounded border ${payMethod === 'mpesa' ? 'bg-green-600 text-white' : 'bg-white'}`} onClick={() => setPayMethod('mpesa')}>M-Pesa</button>
-                        <button type="button" className={`px-3 py-2 rounded border ${payMethod === 'airtel' ? 'bg-red-600 text-white' : 'bg-white'}`} onClick={() => setPayMethod('airtel')}>Airtel Money</button>
+                        <button type="button" className={`px-3 py-2 rounded border ${payMethod === 'mpesa' ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-slate-800'}`} onClick={() => setPayMethod('mpesa')}>M-Pesa</button>
+                        <button type="button" className={`px-3 py-2 rounded border ${payMethod === 'airtel' ? 'bg-red-600 text-white' : 'bg-white dark:bg-slate-800'}`} onClick={() => setPayMethod('airtel')}>Airtel Money</button>
                     </div>
                     {payMethod === 'mpesa' ? (
                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -213,7 +236,7 @@ export function SellPage() {
             )}
 
             {message && (
-                <p className="mt-4 text-green-700 bg-green-50 p-3 rounded">{message}</p>
+                <p className="mt-4 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded">{message}</p>
             )}
         </div>
     )

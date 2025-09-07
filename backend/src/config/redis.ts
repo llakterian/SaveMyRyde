@@ -8,12 +8,11 @@ export const connectRedis = async (): Promise<RedisClientType> => {
   }
 
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  
+
   redisClient = createClient({
     url: redisUrl,
     socket: {
       connectTimeout: 5000,
-      lazyConnect: true,
     },
   });
 

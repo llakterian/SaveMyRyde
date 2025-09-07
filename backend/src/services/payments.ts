@@ -25,7 +25,7 @@ export async function claimManualListingPayment(req: Request, res: Response) {
         }
 
         // Create a pending payment claim
-        const amount_kes = 2500;
+        const amount_kes = 5000;
         const insert = await pool.query(
             `INSERT INTO payments (user_id, listing_id, amount_kes, status, provider, provider_ref, metadata)
        VALUES ($1, $2, $3, 'initiated', 'mpesa-manual', $4, $5)
@@ -62,7 +62,7 @@ export async function adminVerifyPayment(req: Request, res: Response) {
                 return res.status(400).json({ error: 'Only pending listings can be activated' });
             }
             await pool.query(`UPDATE payments SET status='successful' WHERE id=$1`, [paymentId]);
-            await pool.query(`UPDATE listings SET status='active', updated_at=NOW() WHERE id=$1`, [listingId]);
+            await pool.query(`UPDATE listings SET status='active', updated_at=NOW(), ride_safe_paid_at=NOW(), badges=array_append(badges,'ridesafe') WHERE id=$1`, [listingId]);
             return res.json({ message: 'Payment approved and listing published' });
         } else {
             await pool.query(`UPDATE payments SET status='failed' WHERE id=$1`, [paymentId]);

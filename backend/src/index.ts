@@ -10,6 +10,14 @@ import { connectRedis } from './config/redis';
 import listingsRouter from './routes/listings';
 import { claimManualListingPayment, adminVerifyPayment } from './services/payments';
 import path from 'path';
+import mediaRouter from './routes/media';
+import authRouter from './routes/auth';
+import meRouter from './routes/me';
+import adsRouter from './routes/ads';
+import adminRouter from './routes/admin';
+import paymentsRouter from './routes/payments';
+import airtelRouter from './routes/airtel';
+import { requireAuth, requireRole } from './middleware/auth';
 
 // Load environment variables
 dotenv.config();
@@ -17,10 +25,23 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Security middleware
-app.use(helmet());
+// Security middleware (allow cross-origin resource use for icons/images)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
+// CORS: allow dev ports 3000 and 8080
+const allowedOrigins = new Set([
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+  'http://localhost:8080'
+]);
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // allow curl/postman
+    if (allowedOrigins.has(origin)) return cb(null, true);
+    return cb(null, false);
+  },
   credentials: true
 }));
 
@@ -38,32 +59,37 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Guarded media route (locks images for non-active listings)
-app.use('/uploads', (await import('./routes/media')).default);
+app.use('/uploads', mediaRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    service: 'CarRescueKe Backend'
+    service: 'SaveMyRyde Backend'
   });
 });
 
 // API routes
 app.use('/api/listings', listingsRouter);
-// Manual payment claim endpoint
+app.use('/api/auth', authRouter);
+app.use('/api/me', meRouter);
+// Manual payment claim endpoint (public)
 app.post('/api/payments/manual/claim', claimManualListingPayment);
-// Admin verify endpoint
-app.post('/api/payments/manual/verify', adminVerifyPayment);
-app.use('/api/ads', (await import('./routes/ads')).default);
-app.use('/api/admin', (await import('./routes/admin')).default);
-app.use('/api/payments', (await import('./routes/payments')).default);
-app.use('/api/airtel', (await import('./routes/airtel')).default);
+// Admin verify endpoint (protected in router and here for direct path)
+app.post('/api/payments/manual/verify', requireAuth, requireRole('admin'), adminVerifyPayment);
+app.use('/api/ads', adsRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/payments', paymentsRouter);
+app.use('/api/airtel', airtelRouter);
 
 app.get('/api', (req, res) => {
   res.json({
-    message: 'CarRescueKe API is running',
+    message: 'SaveMyRyde API is running',
     version: '1.0.0',
     paybill: {
       name: process.env.PAYBILL_NAME || 'Loop Bank',
@@ -103,7 +129,7 @@ async function startServer() {
     // Start server
     app.listen(PORT, async () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📱 CarRescueKe Backend API ready`);
+      console.log(`📱 SaveMyRyde Backend API ready`);
       // Seed initial admin
       try {
         const { seedInitialAdmin } = await import('./admin/seed');

@@ -1,7 +1,7 @@
 {
-  "name": "car-rescue-ke",
+  "name": "save-my-ryde",
   "version": "1.0.0",
-  "description": "CarRescueKe - Platform for selling distressed vehicles in Kenya",
+  "description": "SaveMyRyde - Platform for selling distressed vehicles in Kenya",
   "main": "index.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
@@ -16,7 +16,7 @@
     "docker:build": "docker-compose build"
   },
   "keywords": ["kenya", "vehicles", "marketplace", "mpesa"],
-  "author": "CarRescueKe Team",
+  "author": "SaveMyRyde Team",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"

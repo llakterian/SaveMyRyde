@@ -1,7 +1,7 @@
 # SaveMyRyde 🚗
 
 <p align="center">
-  <img src="frontend/public/img/logo-full-alt.svg" alt="SaveMyRyde Logo" width="600" />
+  <img src="frontend/public/img/SaveMyRydebyDecabits.png" alt="SaveMyRyde Logo" width="600" />
 </p>
 
 ## Kenya's Premier Vehicle Marketplace

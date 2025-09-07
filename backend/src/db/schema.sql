@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS users (
   dealstar_fee_paid_at TIMESTAMPTZ,
   kyc_status TEXT NOT NULL DEFAULT 'unverified', -- 'unverified' | 'pending' | 'verified' | 'rejected'
   id_verified_at TIMESTAMPTZ,
+  credits_balance INTEGER NOT NULL DEFAULT 0,
+  subscription_tier TEXT NOT NULL DEFAULT 'basic', -- 'basic' | 'premium' | 'vip'
+  subscription_expires_at TIMESTAMPTZ,
+  total_spent_kes INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 -- Ensure role is constrained
@@ -114,13 +118,20 @@ CREATE TABLE IF NOT EXISTS payments (
   user_id TEXT, -- store phone or external id; no FK
   listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
   amount_kes INTEGER NOT NULL,
-  status TEXT NOT NULL, -- 'initiated' | 'successful' | 'failed'
-  provider TEXT NOT NULL, -- 'mpesa'
+  status TEXT NOT NULL, -- 'initiated' | 'successful' | 'failed' | 'pending' | 'cancelled'
+  provider TEXT NOT NULL, -- 'card' | 'mobile_money' | 'bank_transfer' | 'crypto' | 'credits'
   provider_ref TEXT,
   metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  -- New: payment type for future extensibility
-  type TEXT DEFAULT 'ride_safe' -- 'ride_safe' | 'dealstar_fee' | 'flash_deal'
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Payment type for different services
+  type TEXT DEFAULT 'listing_fee', -- 'listing_fee' | 'premium_listing' | 'credits_purchase' | 'subscription' | 'flash_deal' | 'verification'
+  -- Additional fields for modern payment tracking
+  payment_intent_id TEXT,
+  fees_kes INTEGER DEFAULT 0,
+  net_amount_kes INTEGER,
+  currency TEXT DEFAULT 'KES',
+  exchange_rate DECIMAL(10,4) DEFAULT 1.0
 );
 
 DO $$
@@ -156,6 +167,11 @@ CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
 CREATE INDEX IF NOT EXISTS idx_payments_listing ON payments(listing_id);
 CREATE INDEX IF NOT EXISTS idx_listings_created ON listings(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_offers_listing ON offers(listing_id);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_user ON credit_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user ON user_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_code ON referrals(referral_code);
+CREATE INDEX IF NOT EXISTS idx_verification_requests_listing ON verification_requests(listing_id);
 
 -- Table to log DealStar transactions (fees, refunds, points earned/redeemed)
 CREATE TABLE IF NOT EXISTS dealstar_transactions (
@@ -190,10 +206,107 @@ CREATE TABLE IF NOT EXISTS raffle_entries (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Credit transactions table for tracking all credit movements
+CREATE TABLE IF NOT EXISTS credit_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL, -- 'earned' | 'spent' | 'bonus' | 'refund' | 'expired'
+  amount INTEGER NOT NULL, -- positive for credits added, negative for credits spent
+  balance_after INTEGER NOT NULL,
+  source TEXT NOT NULL, -- 'payment_cashback' | 'referral' | 'purchase' | 'listing_fee' | 'admin_adjustment'
+  reference_id UUID, -- payment_id, listing_id, etc.
+  description TEXT,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Subscription plans table
+CREATE TABLE IF NOT EXISTS subscription_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  tier TEXT NOT NULL, -- 'basic' | 'premium' | 'vip'
+  price_kes INTEGER NOT NULL,
+  duration_days INTEGER NOT NULL,
+  features JSONB DEFAULT '{}'::jsonb,
+  max_listings INTEGER,
+  priority_support BOOLEAN DEFAULT FALSE,
+  verification_included BOOLEAN DEFAULT FALSE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- User subscriptions table
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  plan_id UUID NOT NULL REFERENCES subscription_plans(id),
+  payment_id UUID REFERENCES payments(id),
+  status TEXT NOT NULL, -- 'active' | 'expired' | 'cancelled'
+  started_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  auto_renew BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Referral system table
+CREATE TABLE IF NOT EXISTS referrals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_id TEXT NOT NULL,
+  referred_id TEXT NOT NULL,
+  referral_code TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'completed' | 'credited'
+  reward_credits INTEGER DEFAULT 1000,
+  completed_at TIMESTAMPTZ,
+  credited_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(referrer_id, referred_id)
+);
+
+-- Vehicle verification requests table
+CREATE TABLE IF NOT EXISTS verification_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  listing_id UUID NOT NULL REFERENCES listings(id),
+  user_id TEXT NOT NULL,
+  payment_id UUID REFERENCES payments(id),
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'failed'
+  verification_type TEXT NOT NULL, -- 'basic' | 'comprehensive' | 'premium'
+  scheduled_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  verifier_name TEXT,
+  report_url TEXT,
+  findings JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Add dealstar_points to users table if missing
 DO $$
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='dealstar_points') THEN
     ALTER TABLE users ADD COLUMN dealstar_points INTEGER NOT NULL DEFAULT 0;
+  END IF;
+END $$;
+
+-- Insert default subscription plans
+INSERT INTO subscription_plans (name, tier, price_kes, duration_days, features, max_listings, priority_support, verification_included)
+VALUES
+  ('Basic Plan', 'basic', 0, 30, '{"listings_per_month": 2, "photo_limit": 5, "basic_support": true}', 2, FALSE, FALSE),
+  ('Premium Plan', 'premium', 2500, 30, '{"listings_per_month": 10, "photo_limit": 15, "priority_placement": true, "analytics": true}', 10, TRUE, TRUE),
+  ('VIP Plan', 'vip', 5000, 30, '{"unlimited_listings": true, "unlimited_photos": true, "featured_placement": true, "dedicated_support": true, "market_insights": true}', -1, TRUE, TRUE)
+ON CONFLICT DO NOTHING;
+  -- Add credits_balance column if missing
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='credits_balance') THEN
+    ALTER TABLE users ADD COLUMN credits_balance INTEGER NOT NULL DEFAULT 0;
+  END IF;
+  -- Add subscription_tier column if missing
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='subscription_tier') THEN
+    ALTER TABLE users ADD COLUMN subscription_tier TEXT NOT NULL DEFAULT 'basic';
+  END IF;
+  -- Add subscription_expires_at column if missing
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='subscription_expires_at') THEN
+    ALTER TABLE users ADD COLUMN subscription_expires_at TIMESTAMPTZ;
+  END IF;
+  -- Add total_spent_kes column if missing
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='total_spent_kes') THEN
+    ALTER TABLE users ADD COLUMN total_spent_kes INTEGER NOT NULL DEFAULT 0;
   END IF;
 END $$;

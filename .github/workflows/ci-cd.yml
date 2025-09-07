@@ -1,0 +1,128 @@
+name: SaveMyRyde CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd frontend && npm ci
+        cd ../backend && npm ci
+        cd ..
+
+    - name: Run backend linting
+      run: cd backend && npm run lint
+
+    - name: Run frontend linting
+      run: cd frontend && npm run lint
+
+    - name: Build backend
+      run: cd backend && npm run build
+
+    - name: Build frontend
+      run: cd frontend && npm run build
+
+    - name: Run backend tests
+      run: cd backend && npm test
+
+    - name: Run frontend tests
+      run: cd frontend && npm test
+
+    - name: Cache frontend build
+      uses: actions/cache@v3
+      with:
+        path: frontend/dist
+        key: ${{ runner.os }}-frontend-build-${{ github.sha }}
+
+    - name: Cache backend build
+      uses: actions/cache@v3
+      with:
+        path: backend/dist
+        key: ${{ runner.os }}-backend-build-${{ github.sha }}
+
+  deploy-frontend:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Restore frontend build
+      uses: actions/cache@v3
+      with:
+        path: frontend/dist
+        key: ${{ runner.os }}-frontend-build-${{ github.sha }}
+
+    - name: Deploy to Netlify
+      uses: nwtgck/actions-netlify@v2
+      with:
+        publish-dir: './frontend/dist'
+        production-branch: main
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        deploy-message: "Deploy from GitHub Actions"
+        enable-pull-request-comment: true
+        enable-commit-comment: true
+        overwrites-pull-request-comment: true
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      timeout-minutes: 1
+
+  deploy-backend:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Restore backend build
+      uses: actions/cache@v3
+      with:
+        path: backend/dist
+        key: ${{ runner.os }}-backend-build-${{ github.sha }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+    - name: Build and push backend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./backend
+        push: true
+        tags: savemyryde/backend:latest
+        cache-from: type=registry,ref=savemyryde/backend:buildcache
+        cache-to: type=registry,ref=savemyryde/backend:buildcache,mode=max
+
+    # Add deployment to your preferred hosting platform here
+    # Examples include: Railway, Heroku, DigitalOcean, etc.
+
+    # Railway example (uncomment to use)
+    # - name: Deploy to Railway
+    #   uses: bervProject/railway-deploy@main
+    #   with:
+    #     railway_token: ${{ secrets.RAILWAY_TOKEN }}
+    #     service: ${{ secrets.RAILWAY_SERVICE_NAME }}

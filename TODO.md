@@ -1,5 +1,0 @@
-- [x] Fix ListingsPage link to use React Router Link
-- [x] Rebuild frontend Docker image
-- [x] Restart frontend service
-- [ ] Seed sample active listing
-- [ ] Test offers and SSE in browser

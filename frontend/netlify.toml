@@ -1,0 +1,21 @@
+[build]
+  base = "frontend/"
+  publish = "dist/"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://api.savemyryde.co.ke/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[template.environment]
+  VITE_API_URL = "Set this to your API URL"

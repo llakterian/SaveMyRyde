@@ -1,0 +1,19 @@
+{
+  "projects": {
+    "default": "savemyryde-app",
+    "staging": "savemyryde-staging",
+    "production": "savemyryde-prod"
+  },
+  "targets": {
+    "savemyryde-app": {
+      "hosting": {
+        "app": [
+          "savemyryde-app"
+        ],
+        "admin": [
+          "savemyryde-admin"
+        ]
+      }
+    }
+  }
+}

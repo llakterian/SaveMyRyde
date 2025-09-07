@@ -69,7 +69,7 @@ export function Layout({ children }: LayoutProps) {
                     alt="SaveMyRyde Logo"
                     className="w-10 h-10 mr-2"
                   />
-                  <h1 className="text-2xl font-bold heading-gradient">
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                     SaveMyRyde
                   </h1>
                 </div>
@@ -335,7 +335,7 @@ export function Layout({ children }: LayoutProps) {
                 </div>
                 <div>
                   <img
-                    src="/img/logo-full.svg"
+                    src="/img/logo-full-alt.svg"
                     alt="SaveMyRyde"
                     className="h-12 mb-2"
                   />

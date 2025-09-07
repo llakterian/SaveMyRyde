@@ -59,24 +59,11 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2 group">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-200">
-                <span className="text-white font-bold text-xl">🚗</span>
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center">
-                  <img
-                    src="/img/logo.svg"
-                    alt="SaveMyRyde Logo"
-                    className="w-10 h-10 mr-2"
-                  />
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                    SaveMyRyde
-                  </h1>
-                </div>
-                <span className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
-                  Kenya's #1 Car Marketplace
-                </span>
-              </div>
+              <img
+                src="/img/SaveMyRydebyDecabits.png"
+                alt="SaveMyRyde Logo"
+                className="h-12"
+              />
             </Link>
 
             {/* Desktop Navigation */}
@@ -326,20 +313,11 @@ export function Layout({ children }: LayoutProps) {
             {/* Company Info */}
             <div className="md:col-span-2">
               <div className="flex items-center space-x-2 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-                  <img
-                    src="/favicon.svg"
-                    alt="SaveMyRyde Icon"
-                    className="w-6 h-6"
-                  />
-                </div>
-                <div>
-                  <img
-                    src="/img/logo-full-alt.svg"
-                    alt="SaveMyRyde"
-                    className="h-12 mb-2"
-                  />
-                </div>
+                <img
+                  src="/img/SaveMyRydebyDecabits.png"
+                  alt="SaveMyRyde Logo"
+                  className="h-14"
+                />
               </div>
               <p className="text-slate-300 mb-6 max-w-md">
                 Connecting vehicle buyers and sellers across Kenya with a
